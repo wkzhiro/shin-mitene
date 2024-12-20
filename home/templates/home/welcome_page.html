@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block contents %}
+<div class="topPage">
+    <img class="topMainImg" src="{% static 'assets/img/first-view.jpg' %}" alt="first-view">
+    <div class="wrapperNav">
+        <nav>
+            <ul>
+                <li><a href="#">HOME</a></li>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'account_logout' %}">LOG OUT</a></li>
+                {% else %}
+                    <li><a href="{% url 'account_signup' %}">SIGN UP</a></li>
+                    <li><a href="{% url 'account_login' %}">LOG IN</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+<section class="welcome">
+    <div>
+        <h2>ようこそ、Miteneへ</h2>
+        <p>こちらはTech0のMitene公式サイトです。</p>
+        <p>{% user_display user %}</p>
+
+    </div>
+</section>
+{% endblock contents %}

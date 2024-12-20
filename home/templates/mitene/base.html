@@ -1,0 +1,43 @@
+{% load static %}
+<!-- cms.css を読み込む -->
+<link rel="stylesheet" href="{% static 'css/cms.css' %}">
+
+{% block extra_css %}
+    <link
+    rel="stylesheet"
+    href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+    crossorigin="anonymous"
+    />
+
+{% endblock %}
+
+{% block content %}
+    <div id="nav_bar">{% block nav_bar %}{% endblock %}</div>
+    <div id="header">{% block header %}{% endblock %}</div>
+    <div id="main">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 col-md-8">
+                    {% block main_body %}
+                        <!-- メインコンテンツ -->
+                    {% endblock %}
+                </div>
+                <div class="col-12 col-md-3">
+                    {% block side_bar %}
+                        <!-- サイドバーのデフォルト内容 -->
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="footer">{% block footer %}{% endblock %}</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
+    <script
+    src="https://unpkg.com/react-bootstrap@next/dist/react-bootstrap.min.js"
+    crossorigin></script>
+{% endblock %}

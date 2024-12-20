@@ -1,0 +1,95 @@
+{% extends 'mitene/page_layout.html' %}
+{% load wagtailcore_tags wagtailimages_tags %}
+
+{% block header %}
+    {{ block.super }}
+    {% if page.cover_image %}
+        {% image page.cover_image fill-1000x100 as my_image %}
+    {% else %}
+        {% image top_page.specific.cover_image fill-1000x100 as my_image %}
+    {% endif %}
+    <div class="jumbotron jumbotron-fluid" style="background-image: url('{{ my_image.url }}');">
+        <div class="container">
+            <h1 class="display-4">{{ page.title }}</h1>
+            <p class="lead">{{ page.intro }}</p>
+        </div>
+    </div>
+    <!-- {% if category %}
+        <h5>Posts in category: {{ category|upper }}</h5>
+    {% elif tag %}
+        <h5>Posts given tag: {{ tag|upper }}</h5>
+    {% endif %} -->
+{% endblock %}
+
+{% block main_content %}
+    <!-- メインコンテンツ -->
+        {% block main_body %}
+        <div class="row">
+            <!-- 左カラム: カテゴリフィルタ -->
+            <div class="col-md-4">
+                <div class="card my-4">
+                    <h4 class="card-header">Categories</h4>
+                    <div class="card-body">
+                        <form method="get" action="{% pageurl page %}">
+                            {% for category in categories %}
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="radio"
+                                        name="category"
+                                        id="category-{{ category.id }}"
+                                        value="{{ category.name }}"
+                                        {% if selected_category == category.name %}checked{% endif %}>
+                                    <label class="form-check-label" for="category-{{ category.id }}">
+                                        {{ category.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                            <button type="submit" class="btn btn-primary mt-2">Filter</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- 右カラム: 投稿リストといいね数 -->
+            <div class="col-md-8">
+                {% if search_query %}
+                    <h2>検索結果: "{{ search_query }}"</h2>
+                {% endif %}
+        
+                {% for item_page in page_list %}
+                    <hr>
+                    <div class="my-4">
+                        <a href="{% pageurl item_page %}">
+                            <h4>{{ item_page.title }}</h4>
+                            {{ item_page.specific.intro }}
+                        </a>
+                        <!-- カテゴリー表示 -->
+                        {% if item_page.specific.categories.all %}
+                        <p class="mb-2"> 
+                            {% for category in item_page.specific.categories.all %}
+                                <span class="badge bg-secondary">{{ category.name }}</span>
+                            {% endfor %}
+                        </p>
+                        {% endif %}
+                        {% if item_page.last_published_at > item_page.first_published_at %}
+                            <p>Last modified on {{ item_page.last_published_at|date }}</p>
+                        {% else %}
+                            <p>Posted on {{ item_page.first_published_at|date }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-start align-items-center" style="gap: 10px;">
+                        <!-- 閲覧数を表示 -->
+                        <p class="mb-0">👁️ {{ item_page.total_views }}</p>
+                        <!-- いいね数を表示 -->
+                        <p class="mb-0">❤️ {{ item_page.like_count }}</p>
+                    </div>
+                {% empty %}
+                    <p>No posts found for the selected category.</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}

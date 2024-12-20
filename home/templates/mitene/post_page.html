@@ -1,0 +1,187 @@
+{% extends 'mitene/page_layout.html' %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+{% debug %}
+
+{% block header %}
+    {{ block.super }}
+    <!-- Font Awesome アイコンの読み込み -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <!-- カバー画像を削除 -->
+    <div class="jumbotron jumbotron-fluid">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="author-info d-flex align-items-center">
+                        {% if page.owner.wagtail_userprofile.avatar %}
+                            <!-- アバター画像がある場合 -->
+                            <div class="avatar-container">
+                                <img src="{{ page.owner.wagtail_userprofile.avatar.url }}" 
+                                    alt="{{ page.owner.get_full_name|default:page.owner.username }}" 
+                                    class="author-avatar">
+                            </div>
+                        {% else %}
+                            <!-- アバター画像がない場合 -->
+                            <div class="avatar-container">
+                                <img src="{% static 'images/default_user_image.png' %}" 
+                                    alt="Default User Image" 
+                                    class="author-avatar">
+                            </div>
+                        {% endif %}
+                        <p class="mr-3">{{ page.owner.get_full_name|default:page.owner.username }}</p>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <h1 class="display-4">{{ page.title }}</h1>
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="btn-group">
+                                {% for category in page.categories.all %}
+                                    <button type="button" class="btn btn-secondary mr-2">{{ category.name }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% if page.last_published_at > page.first_published_at %}
+                        <span>Last modified on {{ page.last_published_at|date }}</span>
+                    {% else %}
+                        <span>Posted on {{ page.first_published_at|date }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 text-right">
+                    <div id="like-section">
+                        <div class="d-flex align-items-center">
+                            <!-- 閲覧数アイコン（目の画像） -->
+                            <img src="{% static 'images/eyes.jpg' %}" alt="閲覧数" class="eye-icon mr-2" style="width: 20px; height: 20px;">
+                            <p class="mb-0 mr-3">{{ total_views }} 件の閲覧数
+
+                            <!-- いいね数アイコン（ハートマーク） -->
+                            <img src="{% static 'images/heart.jpg' %}" alt="いいね数" class="heart-icon mr-2" style="width: 20px; height: 20px;">
+                            <p class="mb-0">{{ like_count }} 件のいいね
+                        </div>
+                        <!-- いいねボタンのフォーム -->
+                        <div class="d-flex align-items-center">
+                            {% if user.is_authenticated %}
+                                {% if has_liked %}
+                                    <form method="post" action="{% url 'unlike_post' page.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger">いいねを取り消す</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'like_post' page.id %}"> 
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-primary">いいね</button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <p><a href="{% url 'login' %}">ログイン</a>して「いいね」する</p>
+                            {% endif %}
+                            <form method="post" action="{% url 'bookmark' page.id %}">
+                                {% csrf_token %}
+                                {% if has_bookmarked %}
+                                    <button type="submit" class="btn btn-danger">ブックマークを解除</button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-primary">ブックマークする</button>
+                                {% endif %}
+                            </form>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block side_bar %}
+    {{ block.super }}
+
+    <!-- カテゴリーの表示 -->
+    <div class="card my-4">
+        <h4 class="card-header">
+            Categories
+        </h4>
+        <div class="card-body">
+            {% for category in page.categories.all %}
+                <a class="btn btn-outline-primary btn-sm m-1" href="{% pageurl top_page %}?category={{ category.name }}" role="button">
+                    {{ category.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- タグの表示 -->
+    <div class="card my-4">
+        <h4 class="card-header">
+            Tags
+        </h4>
+        <div class="card-body">
+            {% for tag in page.tags.all %}
+                <a class="btn btn-outline-primary btn-sm m-1" href="{% pageurl top_page %}?tag={{ tag.name }}" role="button">
+                    {{ tag.name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block main_body %}
+    <div class="rich-text my-5">
+        {% for block in page.main_body %}
+            {% include_block block %}
+        {% endfor %}
+    </div>
+
+    {% for item_page in page_list %}
+        <hr>
+        <div class="my-4">
+            <a href="{% pageurl item_page %}">
+                <h4>{{ item_page.title }}</h4>
+                {{ item_page.specific.intro }}
+            </a>
+            {% if item_page.last_published_at <= item_page.first_published_at %}
+                <p>Posted on {{ item_page.first_published_at|date }}</p>
+            {% else %}
+                <p>Last modified on {{ item_page.last_published_at|date }}</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+    <hr>
+{% endblock %}
+
+{% block footer %}
+    <nav class="navbar navbar-dark bg-dark fixed-bottom">
+        <span class="navbar-text mx-auto py-0">
+                {{ top_page.specific.footer_text }}
+        </span>
+    </nav>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script type="text/javascript" src="{% static 'js/navbar.min.js' %}"></script>
+    <script>
+        const nav_props = {
+            color: "dark",
+            variant: "dark",
+            brandlabel: "{{ top_page.specific.title }}",
+            brandhref: "{% pageurl top_page %}",
+            navs: [
+                {% for nav_item in top_page.specific.nav_items.all %}
+                    {
+                        label: "{{ nav_item.label }}", 
+                        href: "{% pageurl nav_item.page %}"
+                    }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ] 
+        };
+
+        ReactDOM.render(
+            React.createElement(MyNavbar, nav_props),
+            document.getElementById('nav_bar')
+            );
+    </script>
+{% endblock %}

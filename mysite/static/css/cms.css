@@ -1,0 +1,81 @@
+body {
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+    padding: 50px 0 50px 0;
+}
+
+.jumbotron {
+/* height: 400px; */
+color: #000000;
+background-size: cover; 
+background-position: center center;
+background-color: transparent;
+/* background-blend-mode: multiply; */
+padding: 10px; /* 上下左右に適切な余白を設定 */
+
+}
+
+#main > .container {
+max-width: 992px;
+}
+
+#footer {
+font-size: 90%;
+}
+
+/* これ以下の記述は，埋込みメディアをレスポンシブルにするための指定 */
+
+.rich-text img {
+    max-width: 100%;
+    height: auto;
+}
+
+.responsive-object {
+    position: relative;
+}
+
+.responsive-object iframe,
+.responsive-object object,
+.responsive-object embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.author-info {
+    display: flex; /* Flexboxで横並び */
+    align-items: center; /* 垂直方向に中央揃え */
+}
+
+.author-info p {
+    margin-right: 15px; /* テキストと画像の間にスペースを追加 */
+    margin-bottom: 0; /* テキストの下に余計なマージンが追加されないように */
+
+}
+
+.avatar-container {
+    width: 40px; /* アバターの表示サイズ */
+    height: 40px;
+    border-radius: 50%; /* 丸く切り抜き */
+    overflow: hidden; /* 画像がはみ出さないようにする */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid black; /* ボーダー */
+    position: relative; /* 親要素にposition指定 */
+}
+
+.author-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 画像が枠にフィットするように調整 */
+    position: absolute; /* 絶対配置にすることで画像が切り抜き枠にぴったり収まる */
+    top: 0;
+    left: 0;
+}
+
+.author-info .avatar-container {
+    margin-right: 15px; /* 画像とテキストの間にスペースを追加 */
+}
+

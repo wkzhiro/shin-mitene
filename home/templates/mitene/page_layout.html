@@ -1,0 +1,154 @@
+{% extends 'mitene/base.html' %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block nav_bar %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <div class="container-fluid">
+        <!-- サイト名 -->
+        <a class="navbar-brand" href="http://127.0.0.1:8000/mitene/">Shin-Mitene</a>
+
+        <!-- メニューのトグルボタン -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <!-- ナビゲーションメニュー -->
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="http://127.0.0.1:8000/mitene/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="http://127.0.0.1:8000/mitene/mitene%E6%8A%95%E7%A8%BF%E4%B8%80%E8%A6%A7/">投稿一覧</a>
+                </li>
+                <li class="nav-item">
+                    <!-- ブックマーク管理ページへのリンク -->
+                    <a class="nav-link" href="/admin/snippets/mitene/postbookmark/">bookmark</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">おすすめ図書</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="https://chatbot-ui-enterprise.azurewebsites.net/">AIナレッジポータル
+                    </a>
+                </li>
+
+            </ul>
+
+            <!-- 右端のグループ -->
+            <div class="d-flex align-items-center" style="margin-left: auto; gap: 15px;">
+                <!-- 検索フォーム -->
+                <form class="d-flex" method="get" action="{% pageurl page %}">
+                    <input class="form-control me-2" type="search" name="q" placeholder="検索" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">検索</button>
+                </form>
+
+                <!-- アカウント画像 -->
+                {% if request.user.is_authenticated %}
+                    {% if request.user.wagtail_userprofile and request.user.wagtail_userprofile.avatar %}
+                        <!-- アバター画像がある場合 -->
+                        <a href="http://127.0.0.1:8000/admin/pages/2/" class="d-flex align-items-center">
+                            <img src="{{ request.user.wagtail_userprofile.avatar.url }}" 
+                                alt="{{ request.user.get_full_name|default:request.user.username }}" 
+                                style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid black;">
+                        </a>
+                    {% else %}
+                        <!-- アバター画像がない場合 -->
+                        <a href="http://127.0.0.1:8000/admin/pages/2/" class="d-flex align-items-center">
+                            <div style="width: 30px; height: 30px; border-radius: 50%; border: 2px solid black; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                <img src="{% static 'images/default_user_image.png' %}" 
+                                    alt="Default User" 
+                                    style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <!-- 未ログイン時のリンク -->
+                    <a href="/accounts/login/" class="btn btn-outline-secondary">
+                        <i class="fas fa-user"></i>
+                    </a>
+                {% endif %}
+
+                <!-- 投稿ページ -->
+                <a href="http://127.0.0.1:8000/admin/pages/4/" class="btn btn-primary">
+                    <i class="fas fa-pencil-alt"></i> 投稿する
+                </a>
+
+            </div>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
+{% block header %}
+    <!-- ヘッダーの内容 -->
+{% endblock %}
+
+{% block main_content %}
+    <!-- メインコンテンツの内容 -->
+{% endblock %}
+
+{% block side_bar %}
+    <!-- サイドバーの内容 -->
+    <!-- 上位10名のユーザーを表示 -->
+    
+        <!-- 並び替え用のプルダウンメニュー -->
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <form method="get" action="{% pageurl page %}">
+                <div class="input-group">
+                    <select class="form-select" id="sort-order" name="sort">
+                        <option value="updated" {% if sort_order == 'updated' %}selected{% endif %}>更新日順</option>
+                        <option value="views" {% if sort_order == 'views' %}selected{% endif %}>閲覧数順</option>
+                        <option value="likes" {% if sort_order == 'likes' %}selected{% endif %}>いいね順</option>
+                    </select>
+                    <button class="btn btn-primary" type="submit">並び替え</button>
+                </div>
+            </form>
+        </div>
+
+    <div class="card my-4">
+        <h4 class="card-header">
+            いいね数トップ10ユーザー
+        </h4>
+        <div class="card-body">
+            <ol class="list-group list-group-numbered">
+                {% for user in top_users %}
+                <li class="list-group-item d-flex justify-content-between align-items-center" style="border: none;">
+                    <div class="d-flex align-items-center">
+                        <!-- ユーザーアイコン部分 -->
+                        {% if user.wagtail_userprofile.avatar %}
+                            <img src="{{ user.wagtail_userprofile.avatar.url }}" 
+                                alt="{{ user.get_full_name|default:user.username }}" 
+                                style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; margin-right: 10px;">
+                        {% else %}
+                            <div style="background-color: #ddd; width: 30px; height: 30px; border-radius: 50%; margin-right: 10px;"></div>
+                        {% endif %}
+                        <!-- ユーザー名といいね数 -->
+                        <div>
+                            <div>
+                                {% if user.get_full_name %}
+                                    {{ user.get_full_name }}
+                                {% else %}
+                                    {{ user.username }}
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.85em; color: gray;">
+                                {{ user.like_count }} 件のいいね
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+{% endblock %}
+
+{% block footer %}
+    <!-- フッターの内容 -->
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <!-- 追加のJavaScript -->
+{% endblock %}

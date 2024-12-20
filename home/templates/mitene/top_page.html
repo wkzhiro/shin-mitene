@@ -1,0 +1,71 @@
+{% extends 'mitene/base.html' %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+{% load account %}
+
+
+{% block nav_bar %}
+    <nav class="navbar fixed-top navbar-dark bg-dark mb-0">
+        <span class="navbar-text mx-auto">
+            Say something at the begining.
+        </span>
+    </nav>
+{% endblock %}
+
+{% block header %}
+    {% image page.cover_image fill-1000x400 as my_image %}
+    <div class="jumbotron jumbotron-fluid" style="background-image: url('{{ my_image.url }}');">
+        <div class="container">
+            <h1 class="display-4">{{ page.title }}</h1>
+            <p class="lead">{{ page.intro }}</p>
+            <p>{% user_display user %}</p>
+            {% if user.is_authenticated %}
+                <li><a href="{% url 'account_logout' %}">LOG OUT</a></li>
+            {% else %}
+                <li><a href="{% url 'account_signup' %}">SIGN UP</a></li>
+                <li><a href="{% url 'account_login' %}">LOG IN</a></li>
+            {% endif %}
+
+        </div>
+    </div>
+{% endblock %}
+
+{% block main %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                {% block main_body %}
+                    <div class="rich-text my-5">
+                        {{ page.main_body|richtext }}
+                    </div>
+                {% endblock %}
+            </div>
+            <div class="col-md-4">
+                {% block side_bar %}
+                    <div class="card my-4">
+                        <h4 class="card-header">{{ page.side_title}}</h4>
+                        <div class="card-body">
+                            {% image page.side_image fill-200x200 class="img-fluid rounded-circle d-block mx-auto" alt="" %}
+                        </div>
+                        <div class="card-body">
+                            <div class="rich-text">
+                                {{ page.side_body|richtext }}
+                            </div>
+                        </div>
+                    </div>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block footer %}
+    <nav class="navbar navbar-dark bg-dark fixed-bottom">
+        <span class="navbar-text mx-auto py-0">
+            Say something at the end.
+        </span>
+    </nav>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+{% endblock %}
