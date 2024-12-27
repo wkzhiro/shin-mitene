@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+from dotenv import load_dotenv
+
+# .env をロード
+load_dotenv()
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(PROJECT_DIR)
@@ -95,9 +99,20 @@ WSGI_APPLICATION = "mysite.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
+    # SQLiteの場合
+    # "default": {
+    #     "ENGINE": "django.db.backends.sqlite3",
+    #     "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+    # }
+
+    #Postegreの場合
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "postgres"),       # 環境変数 DB_NAME
+        "USER": os.getenv("DB_USER", "user"),           # 環境変数 DB_USER
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),       # 環境変数 DB_PASSWORD
+        "HOST": os.getenv("DB_HOST", "localhost"),      # 環境変数 DB_HOST
+        "PORT": os.getenv("DB_PORT", "5432"),           # 環境変数 DB_PORT
     }
 }
 

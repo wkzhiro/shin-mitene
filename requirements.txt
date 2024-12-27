@@ -2,3 +2,5 @@ Django>=5.1,<5.2
 wagtail>=6.3,<6.4
 wagtailcodeblock
 django-allauth
+psycopg2==2.9.10
+python-dotenv
