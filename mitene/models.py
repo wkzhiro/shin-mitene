@@ -1,11 +1,14 @@
 from django.db import models,IntegrityError
 from django.db.models import Count
+from django.core.cache import cache
 
 from django import forms  # ここでformsモジュールをインポートします
 from django.contrib.auth import get_user_model
 from django.contrib import admin
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from django.utils import timezone
+import logging
 
 # Add these:
 from wagtail.models import Page, Orderable
@@ -25,6 +28,13 @@ from wagtail.snippets.models import register_snippet
 
 # add this:
 from wagtail.search import index
+
+from azure.search.documents import SearchClient
+from azure.core.credentials import AzureKeyCredential
+import os
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 class TopPage(Page):
 
@@ -107,9 +117,19 @@ class ListPage(Page):
         return views.count()
 
     def get_context(self, request):
+        load_dotenv()  # Azure AI Searchの設定用
+        logger.debug("start")
+
+        # Azure AI Searchの設定
+        search_endpoint = os.getenv('COG_END_POINT')
+        search_credential = AzureKeyCredential(os.getenv('COG_API_KEY'))
+        index_name = os.getenv('INDEX_NAME')
+
         context = super().get_context(request)
         context['top_page'] = self.get_top_page()
         context['breads'] = self.get_breads()
+
+        # トップユーザーを取得
         User = get_user_model()
         top_users = User.objects.annotate(like_count=Count('post_likes')).order_by('-like_count')[:10]
         context['top_users'] = top_users
@@ -120,13 +140,75 @@ class ListPage(Page):
 
         # 並び替え順を取得
         sort_order = request.GET.get('sort', 'updated')
-        context['sort_order'] = sort_order  # テンプレートで現在の並び順を表示するため
+        context['sort_order'] = sort_order
 
         # 検索クエリの処理
         search_query = request.GET.get('q', None)
+        page_number = int(request.GET.get('page', 1))
+        results_per_page = 10
+        sort_order = request.GET.get('sort', 'updated')
+        selected_category = request.GET.get('category', None)
+        selected_tag = request.GET.get('tag', None)
+
+
+        # 検索結果キャッシュキー
+        search_cache_key = f"search_results:{search_query}"
+        search_results = cache.get(search_cache_key)
+        
+        # Azure AI Searchクライアントの初期化
+        search_client = SearchClient(
+            endpoint=search_endpoint,
+            index_name=index_name,
+            credential=search_credential
+        )
+
+        # 検索結果または通常のページリストを初期化
+        page_list = []
         if search_query:
-            # 検索結果を取得
-            page_list = PostPage.objects.live().search(search_query)
+            if search_results:
+                logger.debug(f"Cache hit for key: {search_cache_key}")
+
+                # **カテゴリやタグによるフィルタリングを検索結果に対して適用**
+                if selected_category:
+                    search_results = [
+                        page for page in search_results if selected_category in [cat.name for cat in page.categories.all()]
+                    ]
+                if selected_tag:
+                    search_results = [
+                        page for page in search_results if selected_tag in [tag.name for tag in page.tags.all()]
+                    ]
+            else:
+                logger.debug(f"Cache miss for key: {search_cache_key}. Performing search.")
+                search_results = []
+                try:
+                    # Azure AI Searchで検索
+                    search_client = SearchClient(
+                        endpoint=search_endpoint,
+                        index_name=index_name,
+                        credential=search_credential
+                    )
+                    search_response = search_client.search(
+                        search_text=search_query,
+                        select=['chunk_id', 'chunk', 'tags', 'parent_filename', 'creation_date'],
+                    )
+
+                    # 検索結果をマッピング
+                    for result in search_response:
+                        try:
+                            # page = PostPage.objects.get(id=result['chunk_id'])
+                            page = PostPage.objects.get(page_ptr_id=5)
+                            page.like_count = page.get_like_count()
+                            page.total_views = page.get_view_count()
+                            search_results.append(page)
+                        except PostPage.DoesNotExist:
+                            continue
+
+                    # キャッシュに保存
+                    cache.set(search_cache_key, search_results, timeout=60 * 5)  # キャッシュ有効期間: 5分
+
+                except Exception as e:
+                    print(f"Azure Search failed: {e}")
+                    page_list = PostPage.objects.live().search(search_query)
         else:
             # 通常のページリスト
             if self.related_pages.count():
@@ -143,11 +225,15 @@ class ListPage(Page):
                 else:
                     page_list = self.get_children().live().specific().order_by('-first_published_at')
 
-        # 各ページにいいね数と閲覧数を追加
-        for page in page_list:
-            specific_page = page.specific
-            specific_page.like_count = specific_page.get_like_count() if hasattr(specific_page, 'get_like_count') else 0
-            specific_page.total_views = specific_page.get_view_count() if hasattr(specific_page, 'get_view_count') else 0
+            # 各ページにいいね数と閲覧数を追加（Azure AI Searchが動作している場合は既に追加済み）
+            if not search_query or not page_list:
+                for page in page_list:
+                    specific_page = page.specific
+                    specific_page.like_count = specific_page.get_like_count() if hasattr(specific_page, 'get_like_count') else 0
+                    specific_page.total_views = specific_page.get_view_count() if hasattr(specific_page, 'get_view_count') else 0
+
+        # デフォルト値を設定
+        search_results = search_results or []
 
         # 並び替えの適用
         if sort_order == 'views':
@@ -157,11 +243,84 @@ class ListPage(Page):
         elif sort_order == 'updated':
             page_list = sorted(page_list, key=lambda x: x.last_published_at, reverse=True)
 
-        context['page_list'] = page_list
+        # Pagination
+        paginator = Paginator(page_list, results_per_page)
+        try:
+            page_list = paginator.page(page_number)
+        except PageNotAnInteger:
+            page_list = paginator.page(1)
+        except EmptyPage:
+            page_list = paginator.page(paginator.num_pages)
+
+        # コンテキストに検索結果を追加
         if search_query:
-            context['search_query'] = search_query  # 検索クエリをテンプレートに渡す
+            context['search_query'] = search_query        
+        context['search_results'] = search_results  # 生の検索結果リスト
+        context['page_list'] = page_list  # ページネーションされた結果リスト
+        context['sort_order'] = sort_order
+        context['selected_category'] = selected_category
+        context['selected_tag'] = selected_tag
+
+        logger.debug("search_query=",search_query)
 
         return context
+        
+
+        # context = super().get_context(request)
+        # context['top_page'] = self.get_top_page()
+        # context['breads'] = self.get_breads()
+        # User = get_user_model()
+        # top_users = User.objects.annotate(like_count=Count('post_likes')).order_by('-like_count')[:10]
+        # context['top_users'] = top_users
+
+        # # カテゴリ一覧を取得
+        # categories = PostCategory.objects.all()
+        # context['categories'] = categories
+
+        # # 並び替え順を取得
+        # sort_order = request.GET.get('sort', 'updated')
+        # context['sort_order'] = sort_order  # テンプレートで現在の並び順を表示するため
+
+        # # 検索クエリの処理
+        # search_query = request.GET.get('q', None)
+        # if search_query:
+        #     # 検索結果を取得
+        #     page_list = PostPage.objects.live().search(search_query)
+        # else:
+        #     # 通常のページリスト
+        #     if self.related_pages.count():
+        #         page_list = [item.page.specific for item in self.related_pages.all()]
+        #     else:
+        #         tag = request.GET.get('tag')
+        #         category = request.GET.get('category')
+        #         if category:
+        #             context['category'] = category
+        #             page_list = PostPage.objects.descendant_of(self.get_top_page()).filter(categories__name=category).live().order_by('-first_published_at')
+        #         elif tag:
+        #             context['tag'] = tag
+        #             page_list = PostPage.objects.descendant_of(self.get_top_page()).filter(tags__name=tag).live().order_by('-first_published_at')
+        #         else:
+        #             page_list = self.get_children().live().specific().order_by('-first_published_at')
+
+        # # 各ページにいいね数と閲覧数を追加
+        # for page in page_list:
+        #     specific_page = page.specific
+        #     specific_page.like_count = specific_page.get_like_count() if hasattr(specific_page, 'get_like_count') else 0
+        #     specific_page.total_views = specific_page.get_view_count() if hasattr(specific_page, 'get_view_count') else 0
+
+        # # 並び替えの適用
+        # if sort_order == 'views':
+        #     page_list = sorted(page_list, key=lambda x: x.specific.total_views, reverse=True)
+        # elif sort_order == 'likes':
+        #     page_list = sorted(page_list, key=lambda x: x.specific.like_count, reverse=True)
+        # elif sort_order == 'updated':
+        #     page_list = sorted(page_list, key=lambda x: x.last_published_at, reverse=True)
+
+        # context['page_list'] = page_list
+        # if search_query:
+        #     context['search_query'] = search_query  # 検索クエリをテンプレートに渡す
+
+        # return context
     
 
 class RelatedPages(Orderable):
@@ -265,6 +424,146 @@ class PostPage(Page):
 
         return context
 
+class SearchResultsPage(Page):
+
+    cover_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
+        
+    intro = models.CharField(max_length=255, blank=True)
+
+    content_panels = Page.content_panels + [
+        FieldPanel('intro'),
+    ]
+
+    parent_page_types = ['mitene.TopPage', 'mitene.ListPage']
+
+    def get_like_count(self):
+            return self.likes.count()
+
+    def get_view_count(self, start_date=None, end_date=None):
+        views = self.page_views.all()
+        if start_date:
+            views = views.filter(viewed_at__gte=start_date)
+        if end_date:
+            views = views.filter(viewed_at__lte=end_date)
+        return views.count()
+
+    def get_context(self, request):
+        load_dotenv()  # Azure AI Searchの設定用
+
+        
+        # Azure AI Searchの設定
+        search_endpoint = os.getenv('COG_END_POINT')
+        search_credential = AzureKeyCredential(os.getenv('COG_API_KEY'))
+        index_name = os.getenv('INDEX_NAME')
+
+        context = super().get_context(request)
+        # ページが SearchResultsPage かどうかのフラグを追加
+        context['is_search_results_page'] = isinstance(self, SearchResultsPage)
+
+        # トップユーザーを取得
+        User = get_user_model()
+        top_users = User.objects.annotate(like_count=Count('post_likes')).order_by('-like_count')[:10]
+        context['top_users'] = top_users
+
+        # カテゴリ一覧を取得
+        categories = PostCategory.objects.all()
+        context['categories'] = categories
+
+        # 検索クエリの処理
+        search_query = request.GET.get('q', None)
+        page_number = int(request.GET.get('page', 1))
+        results_per_page = 10
+        sort_order = request.GET.get('sort', 'updated')
+        selected_category = request.GET.get('category', None)
+        selected_tag = request.GET.get('tag', None)
+
+        # 検索結果キャッシュキー
+        search_cache_key = f"search_results:{search_query}"
+        search_results = cache.get(search_cache_key)
+
+        if search_results:
+            logger.debug(f"Cache hit for key: {search_cache_key}")
+        else:
+            logger.debug(f"Cache miss for key: {search_cache_key}. Performing search.")
+            search_results = []
+            try:
+                # Azure AI Searchで検索
+                search_client = SearchClient(
+                    endpoint=search_endpoint,
+                    index_name=index_name,
+                    credential=search_credential
+                )
+                search_response = search_client.search(
+                    search_text=search_query,
+                    select=['chunk_id', 'chunk', 'tags', 'parent_filename', 'creation_date'],
+                )
+
+                # 検索結果をマッピング
+                for result in search_response:
+                    try:
+                        # page = PostPage.objects.get(id=result['chunk_id'])
+                        page = PostPage.objects.get(page_ptr_id=5)
+                        page.like_count = page.get_like_count()
+                        page.total_views = page.get_view_count()
+                        search_results.append(page)
+                    except PostPage.DoesNotExist:
+                        continue
+
+                # キャッシュに保存
+                cache.set(search_cache_key, search_results, timeout=60 * 5)  # キャッシュ有効期間: 5分
+
+            except Exception as e:
+                print(f"Azure Search failed: {e}")
+
+
+        # デフォルト値を設定
+        search_results = search_results or []
+
+        # **カテゴリやタグによるフィルタリングを検索結果に対して適用**
+        if selected_category:
+            search_results = [
+                page for page in search_results if selected_category in [cat.name for cat in page.categories.all()]
+            ]
+        if selected_tag:
+            search_results = [
+                page for page in search_results if selected_tag in [tag.name for tag in page.tags.all()]
+            ]
+
+        # 並び替え
+        if sort_order == 'views':
+            search_results = sorted(search_results, key=lambda x: x.get_view_count(), reverse=True)
+        elif sort_order == 'likes':
+            search_results = sorted(search_results, key=lambda x: x.get_like_count(), reverse=True)
+        elif sort_order == 'updated':
+            search_results = sorted(search_results, key=lambda x: x.last_published_at, reverse=True)
+
+        # ページネーション
+        paginator = Paginator(search_results, results_per_page)
+        try:
+            paginated_results = paginator.page(page_number)
+        except PageNotAnInteger:
+            paginated_results = paginator.page(1)
+        except EmptyPage:
+            paginated_results = paginator.page(paginator.num_pages)
+
+        # コンテキストに検索結果を追加
+        context['search_query'] = search_query
+        context['search_results'] = search_results  # 生の検索結果リスト
+        context['page_list'] = paginated_results  # ページネーションされた結果リスト
+        context['sort_order'] = sort_order
+        context['selected_category'] = selected_category
+        context['selected_tag'] = selected_tag
+
+        logger.debug("search_query=",search_query)
+
+        return context
+    
 User = get_user_model()
 
 class PostLike(models.Model):

@@ -38,7 +38,7 @@
             <!-- 右端のグループ -->
             <div class="d-flex align-items-center" style="margin-left: auto; gap: 15px;">
                 <!-- 検索フォーム -->
-                <form class="d-flex" method="get" action="{% pageurl page %}">
+                <form class="d-flex" method="get" action="/mitene/mitenelist/">
                     <input class="form-control me-2" type="search" name="q" placeholder="検索" aria-label="Search">
                     <button class="btn btn-outline-success" type="submit">検索</button>
                 </form>
@@ -93,13 +93,30 @@
     <!-- 上位10名のユーザーを表示 -->
     
         <!-- 並び替え用のプルダウンメニュー -->
+        <!-- search_results_pageには別途設定 -->
+
         <div class="d-flex justify-content-end align-items-center mb-3">
             <form method="get" action="{% pageurl page %}">
                 <div class="input-group">
+                    <!-- 現在の検索クエリを保持する隠しフィールド -->
+                    {% if search_query %}
+                        <input type="hidden" name="q" value="{{ search_query }}">
+                    {% endif %}
+                    {% if selected_category %}
+                        <input type="hidden" name="category" value="{{ selected_category }}">
+                    {% endif %}
+                    {% if selected_tag %}
+                        <input type="hidden" name="tag" value="{{ selected_tag }}">
+                    {% endif %}
+            
                     <select class="form-select" id="sort-order" name="sort">
                         <option value="updated" {% if sort_order == 'updated' %}selected{% endif %}>更新日順</option>
                         <option value="views" {% if sort_order == 'views' %}selected{% endif %}>閲覧数順</option>
                         <option value="likes" {% if sort_order == 'likes' %}selected{% endif %}>いいね順</option>
+                        <!-- SearchResultsPage の場合のみ追加 -->
+                        {% if is_search_results_page %}
+                            <option value="creation_date" {% if sort_order == 'creation_date' %}selected{% endif %}>作成日順</option>
+                        {% endif %}
                     </select>
                     <button class="btn btn-primary" type="submit">並び替え</button>
                 </div>

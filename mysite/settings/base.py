@@ -245,3 +245,33 @@ ACCOUNT_ADAPTER = 'accounts.adapter.AccountAdapter'
 # WAGTAIL_USER_kCUSTOM_FIELDS = ['avatar']
 # WAGTAIL_USER_EDIT_FORM = 'accounts.forms.CustomUserEditForm'
 # WAGTAIL_USER_CREATION_FORM = 'accounts.forms.CustomUserCreationForm'
+
+#ログの設定
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "DEBUG",  # 必要に応じて INFO, WARNING に変更
+    },
+}
+
+#開発環境用
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+#本番環境用
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#     }
+# }
