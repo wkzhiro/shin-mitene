@@ -1,5 +1,5 @@
 from django.db import models,IntegrityError
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.core.cache import cache
 
 from django import forms  # ここでformsモジュールをインポートします
@@ -31,8 +31,11 @@ from wagtail.search import index
 
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
+
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
+from django.utils.timezone import now
 
 logger = logging.getLogger(__name__)
 
@@ -130,8 +133,26 @@ class ListPage(Page):
         context['breads'] = self.get_breads()
 
         # トップユーザーを取得
+        # 集計期間を取得（デフォルトは全期間）
+        period = request.GET.get('period', 'all')  # 'all' または '3months'
+        context['selected_period'] = period
+
+        # 過去3か月の日付を計算
+        three_months_ago = now() - timedelta(days=90)
+
+        # トップユーザーを取得（期間に応じてフィルタリング）
         User = get_user_model()
-        top_users = User.objects.annotate(like_count=Count('post_likes')).order_by('-like_count')[:10]
+        # 集計条件を設定
+        if period == '3months':
+            # 過去3か月のトップユーザーを取得
+            top_users = User.objects.annotate(
+                like_count=Count('post_likes', filter=Q(post_likes__liked_at__gte=three_months_ago))
+            ).order_by('-like_count')[:20]
+        else:
+            # 全期間のトップユーザーを取得
+            top_users = User.objects.annotate(
+                like_count=Count('post_likes')
+            ).order_by('-like_count')[:20]
         context['top_users'] = top_users
 
         # カテゴリ一覧を取得

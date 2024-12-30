@@ -128,6 +128,22 @@
             いいね数トップ10ユーザー
         </h4>
         <div class="card-body">
+            <!-- 集計期間選択 -->
+            <form method="get" class="mb-3">
+                <label for="period" class="form-label">集計期間</label>
+                <select class="form-select" id="period" name="period" onchange="this.form.submit()">
+                    <option value="all" {% if selected_period == 'all' %}selected{% endif %}>全期間</option>
+                    <option value="3months" {% if selected_period == '3months' %}selected{% endif %}>過去3か月</option>
+                </select>
+
+                <!-- 現在の検索クエリや他のパラメータを保持 -->
+                {% for key, value in request.GET.items %}
+                    {% if key != 'period' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+            </form>
+            
             <ol class="list-group list-group-numbered">
                 {% for user in top_users %}
                 <li class="list-group-item d-flex justify-content-between align-items-center" style="border: none;">
