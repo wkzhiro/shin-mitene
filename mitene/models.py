@@ -201,6 +201,7 @@ class ListPage(Page):
             else:
                 logger.debug(f"Cache miss for key: {search_cache_key}. Performing search.")
                 search_results = []
+                page_list = []
                 try:
                     # Azure AI Searchで検索
                     search_client = SearchClient(
@@ -220,12 +221,12 @@ class ListPage(Page):
                             page = PostPage.objects.get(page_ptr_id=5)
                             page.like_count = page.get_like_count()
                             page.total_views = page.get_view_count()
-                            search_results.append(page)
+                            page_list.append(page)
                         except PostPage.DoesNotExist:
                             continue
 
                     # キャッシュに保存
-                    cache.set(search_cache_key, search_results, timeout=60 * 5)  # キャッシュ有効期間: 5分
+                    cache.set(search_cache_key, page_list, timeout=60 * 5)  # キャッシュ有効期間: 5分
 
                 except Exception as e:
                     print(f"Azure Search failed: {e}")
@@ -434,15 +435,35 @@ class PostPage(Page):
         context['breads'] = self.get_breads()
         context['like_count'] = self.get_like_count()
         context['has_liked'] = self.is_liked_by_user(request.user) if request.user.is_authenticated else False
-        User = get_user_model()
-        top_users = User.objects.annotate(like_count=Count('post_likes')).order_by('-like_count')[:10]
-        context['top_users'] = top_users
+        
         context['total_views'] = self.get_view_count()
         # 例えば過去7日間のビュー数
         start_date = timezone.now().date() - timezone.timedelta(days=30)
         context['monthly_views'] = self.get_view_count(start_date=start_date)
         context['has_bookmarked'] = self.bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False
 
+        # トップユーザーを取得
+        # 集計期間を取得（デフォルトは全期間）
+        period = request.GET.get('period', 'all')  # 'all' または '3months'
+        context['selected_period'] = period
+
+        # 過去3か月の日付を計算
+        three_months_ago = now() - timedelta(days=90)
+
+        # トップユーザーを取得（期間に応じてフィルタリング）
+        User = get_user_model()
+        # 集計条件を設定
+        if period == '3months':
+            # 過去3か月のトップユーザーを取得
+            top_users = User.objects.annotate(
+                like_count=Count('post_likes', filter=Q(post_likes__liked_at__gte=three_months_ago))
+            ).order_by('-like_count')[:20]
+        else:
+            # 全期間のトップユーザーを取得
+            top_users = User.objects.annotate(
+                like_count=Count('post_likes')
+            ).order_by('-like_count')[:20]
+        context['top_users'] = top_users
         return context
 
 class SearchResultsPage(Page):
@@ -508,8 +529,11 @@ class SearchResultsPage(Page):
         search_cache_key = f"search_results:{search_query}"
         search_results = cache.get(search_cache_key)
 
-        if search_results:
-            logger.debug(f"Cache hit for key: {search_cache_key}")
+        # q が None もしくは空文字の場合はローカルの全記事を取得する
+        if not search_query or search_query == None:
+            logger.debug("No search query provided. Fetching all pages.")
+            # すべての記事を取得する（必要に応じてフィルタ条件を追加）
+            search_results = list(PostPage.objects.live().specific())
         else:
             logger.debug(f"Cache miss for key: {search_cache_key}. Performing search.")
             search_results = []
