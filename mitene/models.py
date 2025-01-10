@@ -166,7 +166,7 @@ class ListPage(Page):
         # 検索クエリの処理
         search_query = request.GET.get('q', None)
         page_number = int(request.GET.get('page', 1))
-        results_per_page = 10
+        results_per_page = 2
         sort_order = request.GET.get('sort', 'updated')
         selected_category = request.GET.get('category', None)
         selected_tag = request.GET.get('tag', None)
@@ -198,6 +198,8 @@ class ListPage(Page):
                     search_results = [
                         page for page in search_results if selected_tag in [tag.name for tag in page.tags.all()]
                     ]
+
+                page_list = search_results
             else:
                 logger.debug(f"Cache miss for key: {search_cache_key}. Performing search.")
                 search_results = []
