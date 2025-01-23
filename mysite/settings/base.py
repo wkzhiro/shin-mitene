@@ -261,17 +261,24 @@ LOGGING = {
     },
 }
 
-#開発環境用
+# 開発環境用
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+#     }
+# }
+
+# 本番環境用
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
     }
 }
 
-#本番環境用
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#         'LOCATION': 'redis://127.0.0.1:6379/1',
-#     }
-# }
+# settings.py の最後の方に追加
+CSRF_TRUSTED_ORIGINS = [
+    'https://shin-mitene-djgyddgedpeve4h2.eastus-01.azurewebsites.net',
+]
+
+CSRF_COOKIE_DOMAIN = '.shin-mitene-djgyddgedpeve4h2.eastus-01.azurewebsites.net'

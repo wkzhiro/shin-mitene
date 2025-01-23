@@ -3,6 +3,7 @@ wagtail>=6.3,<6.4
 wagtailcodeblock
 django-allauth
 psycopg2==2.9.10
+python-dotenv
 azure-search-documents==11.6.0b2
 azure-core==1.30.2
 python-dotenv==1.0.1
