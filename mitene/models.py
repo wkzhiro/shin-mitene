@@ -214,6 +214,7 @@ class ListPage(Page):
                     search_response = search_client.search(
                         search_text=search_query,
                         select=['chunk_id', 'chunk', 'tags', 'parent_filename', 'creation_date'],
+                        top=20  # 最初の20件に絞る,本番時は消すこと
                     )
 
                     # 検索結果をマッピング
