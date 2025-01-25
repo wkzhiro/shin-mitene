@@ -1,3 +1,4 @@
 /node_modules
 /__azurite_db_*
+memo.txt
 .env

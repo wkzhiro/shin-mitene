@@ -1,7 +1,0 @@
-管理者
-ID:wkz
-PW：hiro0309
-
-postgre
-ID:tech0admin
-PW:6d7EVpWB

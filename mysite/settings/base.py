@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     "accounts.apps.AccountsConfig",#ユーザー管理アプリ
+    # "debug_toolbar",
+    'silk'
 ]
 
 MIDDLEWARE = [
@@ -68,9 +70,13 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
     'allauth.account.middleware.AccountMiddleware',  # ここに追加
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'silk.middleware.SilkyMiddleware',
+
 ]
 
 ROOT_URLCONF = "mysite.urls"
+INTERNAL_IPS = ['127.0.0.1', '::1', "192.168.1.1"]
 
 TEMPLATES = [
     {

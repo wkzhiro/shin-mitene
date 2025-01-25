@@ -1,6 +1,6 @@
 from .base import *
 
-DEBUG = False
+DEBUG = False if os.getenv('MODE') == 'production' else True
 
 try:
     from .local import *

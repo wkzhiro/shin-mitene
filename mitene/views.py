@@ -38,6 +38,10 @@ def top_liked_users(request):
     }
     return render(request, 'top_users.html', context)
 
+def view_function(request):
+    ip = request.META.get('REMOTE_ADDR')
+    print("ip",ip)  # コンソールにIPアドレスを出力
+
 class SearchView(Page):
     def get_context(self, request):
 

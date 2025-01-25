@@ -286,7 +286,7 @@ class ListPage(Page):
         context['selected_category'] = selected_category
         context['selected_tag'] = selected_tag
 
-        logger.debug("search_query=",search_query)
+        logger.debug(f"search_query={search_query}")
 
         return context
         
@@ -608,7 +608,7 @@ class SearchResultsPage(Page):
         context['selected_category'] = selected_category
         context['selected_tag'] = selected_tag
 
-        logger.debug("search_query=",search_query)
+        logger.debug(f"search_query={search_query}")
 
         return context
     
