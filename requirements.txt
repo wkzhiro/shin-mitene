@@ -4,7 +4,7 @@ wagtailcodeblock
 django-allauth
 psycopg2==2.9.10
 python-dotenv
-azure-search-documents==11.6.0b2
+azure-search-documents==11.5.2
 azure-core==1.30.2
 python-dotenv==1.0.1
 django-silk==5.3.2
